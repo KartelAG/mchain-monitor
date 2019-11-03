@@ -2,14 +2,18 @@ import configparser
 import datetime
 import sys
 import time
+import json
 from threading import Thread
 
 from web3 import Web3
+from web3.middleware import geth_poa_middleware
 
 from systemstats import SystemStats
 
 class Mchain_Monitor():
     def __init__(self):
+        self.record = {}
+        self.sys_stat = SystemStats()
         try:
             self.__config = configparser.ConfigParser()
             self.__config.read('config.ini')
@@ -21,6 +25,7 @@ class Mchain_Monitor():
             sys.exit()
         try:
             self.w3 = Web3(Web3.WebsocketProvider('ws://' + self.__config['global']['api_address'] + ':' + self.__config['global']['api_port']))
+            self.w3.middleware_stack.inject(geth_poa_middleware, layer=0)
         except:
             self.error_log.write(''.join(str(datetime.datetime.now()), ' cannot connect to mchain node via ', self.__config['global']['api_address'], ':', self.__config['global']['api_port']))
         
@@ -28,12 +33,18 @@ class Mchain_Monitor():
         self.logger.log_event(event_data)
 
     def handle_block_event(self, event_data):
-        return self.w3.eth.getBlock(event_data.hex())
+        return self.w3.eth.getBlock(str(event_data.hex())).__dict__
+#        type(event_data)
+#        return event_data.hex()
         
     def log_loop(self, event_filter, poll_interval):
         while True:
             for event in event_filter.get_new_entries():
-                self.log_event(str(self.handle_block_event(event)))
+                self.record['timestamp'] = str(datetime.datetime.now())
+                self.record['utctimestamp'] = str(time.time())
+                self.record['block'] = self.handle_block_event(event)
+                self.record['system'] = self.sys_stat.get_stats()
+                self.log_event(str(self.record))
             if (poll_interval > 0):
                 time.sleep(poll_interval)
 
