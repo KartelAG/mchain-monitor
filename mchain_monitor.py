@@ -27,19 +27,24 @@ class Mchain_Monitor():
     def log_event(self, event_data):
         self.logger.log_event(event_data)
 
+    def handle_block_event(self, event_data):
+        return self.w3.eth.getBlock(event_data.hex())
+        
     def log_loop(self, event_filter, poll_interval):
         while True:
             for event in event_filter.get_new_entries():
-                self.log_event(str(event.hex()))
-            time.sleep(poll_interval)
+                self.log_event(str(self.handle_block_event(event)))
+            if (poll_interval > 0):
+                time.sleep(poll_interval)
 
     def subscribe_for_new_blocks(self):
         self.block_filter = self.w3.eth.filter('latest')
-        self.log_loop(self.block_filter, 1)
+        self.log_loop(self.block_filter, 0)
 
     def run(self):
-        self.worker = Thread(target=self.subscribe_for_new_blocks, daemon=True)
-        self.worker.start()
+        #self.worker = Thread(target=self.subscribe_for_new_blocks, daemon=True)
+        #self.worker.start()
+        self.subscribe_for_new_blocks()
 
 
 class LoggerToFile():
@@ -54,5 +59,5 @@ class LoggerToFile():
 
 if __name__ == '__main__':
     obj = Mchain_Monitor()
-    #obj.run()
-    obj.subscribe_for_new_blocks()
+    obj.run()
+    

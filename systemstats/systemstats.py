@@ -1,7 +1,6 @@
 import os
 import psutil
 import json
-from time import sleep
 
 class SystemStats():
     def __init__(self):
